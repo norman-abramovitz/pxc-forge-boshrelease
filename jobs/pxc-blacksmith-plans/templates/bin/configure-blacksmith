@@ -1,0 +1,44 @@
+#!/bin/bash
+set -eu
+
+plan_src="/var/vcap/jobs/pxc-blacksmith-plans/plans"
+svc_root="/var/vcap/data/blacksmith/pxc-forge/services"
+
+rm -rf "${svc_root}"
+mkdir -p "${svc_root}"
+cp "${plan_src}/service.yml" "${svc_root}/"
+<% require 'json' -%>
+<% p('plans').each do |id, plan|
+     type = plan['type'] || 'standalone'
+     raise "plan #{id}: type '#{type}' is not standalone or cluster" unless %w[standalone cluster].include?(type)
+     meta = { 'size' => plan['vm_type'] || 'default' }
+     meta['proxy_size'] = plan['proxy_vm_type'] if type == 'cluster' && plan['proxy_vm_type']
+     meta['net'] = plan['network'] || 'pxc-service'
+     meta['azs'] = plan['azs'] if plan['azs']
+     meta['disk_config'] = plan['disk_type'] ? { 'persistent_disk_type' => plan['disk_type'] } : { 'persistent_disk' => plan['disk'] || 10_240 }
+     meta['tls_required'] = plan['tls_required'] ? true : false
+-%>
+
+# plan <%= id %>
+plan_type="<%= type %>"
+mkdir -p "${svc_root}/<%= id %>"
+
+cat > "${svc_root}/<%= id %>/plan.yml" <<'EOF'
+---
+id: <%= id.to_json %>
+name: <%= (plan['name'] || id).to_json %>
+limit: <%= (plan['limit'] || 0).to_i %>
+description: <%= (plan['description'] || 'no description provided').to_json %>
+EOF
+
+for file in init credentials.yml manifest.yml; do
+  cp "${plan_src}/${plan_type}/${file}" "${svc_root}/<%= id %>/"
+done
+chmod 0755 "${svc_root}/<%= id %>/init"
+
+cat > "${svc_root}/<%= id %>/params.yml" <<'EOF'
+---
+# written by pxc-blacksmith-plans for plan <%= id %>
+meta: <%= meta.to_json %>
+EOF
+<% end -%>

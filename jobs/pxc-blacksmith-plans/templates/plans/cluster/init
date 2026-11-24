@@ -1,0 +1,8 @@
+#!/bin/bash
+set -eu
+
+# The admin password is the one secret the binding returns, so it lives in
+# vault, where credentials.yml can read it. BOSH generates the rest.
+safe gen $CREDENTIALS/admin password
+
+exit 0

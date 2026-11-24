@@ -1,0 +1,7 @@
+---
+name: pxc-forge
+blobstore:
+  provider: s3
+  options:
+    bucket_name: pxc-forge-boshrelease
+    credentials_source: env_or_profile

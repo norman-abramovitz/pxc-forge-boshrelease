@@ -1,0 +1,66 @@
+---
+meta:
+  size: default
+  environment: <%= p('environment') %>
+  bosh_env: <%= p('bosh_env') %>
+  admin_username: admin
+  admin_password: (( vault $CREDENTIALS "/admin:password" ))
+  default:
+    azs: [ z1 ]
+
+variables:
+- name: pxc_root_password
+  type: password
+- name: pxc_server_tls
+  type: certificate
+  options:
+    ca: (( concat "/" meta.bosh_env "-bosh/" meta.environment "-blacksmith/blacksmith_services_ca" ))
+    common_name: (( concat meta.environment "-pxc.bosh" ))
+    alternative_names: [ localhost ]
+
+releases:
+- name: pxc
+  version: "<%= p('pxc_release.version').to_s.gsub('"', '') %>"
+  url: "<%= p('pxc_release.url').to_s.gsub('"', '') %>"
+  sha1: "<%= p('pxc_release.sha1').to_s.gsub('"', '') %>"
+- name: bpm
+  version: "<%= p('bpm_release.version').to_s.gsub('"', '') %>"
+  url: "<%= p('bpm_release.url').to_s.gsub('"', '') %>"
+  sha1: "<%= p('bpm_release.sha1').to_s.gsub('"', '') %>"
+
+stemcells:
+- alias: default
+  os: <%= p('stemcell_os') %>
+  version: "<%= p('stemcell_version').to_s.gsub('"', '') %>"
+
+update:
+  canaries: 1
+  canary_watch_time: 10000-600000
+  update_watch_time: 10000-600000
+  max_in_flight: 1
+  serial: false
+
+instance_groups:
+- name: mysql
+  instances: 1
+  azs: (( grab meta.azs || meta.default.azs ))
+  networks: [ { name: (( grab meta.net || "pxc-service" )) } ]
+  stemcell: default
+  vm_type: (( grab meta.size ))
+  .: (( inject meta.disk_config ))
+  jobs:
+  - name: bpm
+    release: bpm
+  - name: pxc-mysql
+    release: pxc
+    properties:
+      mysql_version: "8.4"
+      admin_password: ((pxc_root_password))
+      tls:
+        server: ((pxc_server_tls))
+        required: (( grab meta.tls_required || false ))
+      seeded_users:
+        admin:
+          password: (( grab meta.admin_password ))
+          host: any
+          role: admin

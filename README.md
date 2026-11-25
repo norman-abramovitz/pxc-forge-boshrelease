@@ -78,8 +78,8 @@ A binding returns:
 
 | Key | Value |
 |---|---|
-| `host` | the MySQL node (standalone) or the first proxy (cluster) |
-| `hosts` | cluster only: all proxy addresses |
+| `host` | the BOSH DNS name of the MySQL node (standalone) or the first proxy (cluster) |
+| `hosts` | cluster only: the BOSH DNS names of all proxies |
 | `port` | 3306 |
 | `username`, `password` | the `admin` user |
 | `uri` | `mysql://<username>:<password>@<host>:3306/` |
@@ -87,8 +87,10 @@ A binding returns:
 
 MySQL serves TLS with a certificate that BOSH signs with the Blacksmith
 services CA (`/<bosh_env>-bosh/<environment>-blacksmith/blacksmith_services_ca`).
-The certificate names no service address, so clients verify the CA but not
-the host name. Galera traffic between cluster nodes uses a CA of its own
+The certificate covers `*.<group>.<network>.<deployment>.bosh`, the names the
+binding hands out (group `mysql` for standalone, `proxy` for cluster), so
+clients can verify the host name as well as the CA. The names resolve on
+VMs that run BOSH DNS, such as Diego cells. Galera traffic between cluster nodes uses a CA of its own
 for each instance.
 
 ## Development

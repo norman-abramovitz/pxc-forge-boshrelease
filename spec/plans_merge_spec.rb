@@ -42,15 +42,17 @@ describe 'pxc-blacksmith-plans merged with graft' do
     offline(job.template("plans/#{plan}/manifest.yml").render(props))
   end
 
-  def credentials(plan, jobs)
-    merged = merge(manifest(plan), PARAMS, { 'jobs' => jobs },
+  def credentials(plan, jobs, params = PARAMS)
+    merged = merge(manifest(plan), params, { 'jobs' => jobs },
                    offline(job.template("plans/#{plan}/credentials.yml").render(props)),
                    { 'name' => 'deployment' }, { 'params' => { 'instance_id' => 'i', 'hostname' => '' } })
     merged['credentials']
   end
 
-  def vm(name, ips)
-    { 'name' => name, 'ips' => ips }
+  # The broker lists each VM as group/index, then each group under its bare
+  # name; both carry a VM's id (a group, its first VM's).
+  def vm(name, id, ips)
+    { 'name' => name, 'id' => id, 'ips' => ips }
   end
 
   def pxc_props(merged)
@@ -92,29 +94,40 @@ describe 'pxc-blacksmith-plans merged with graft' do
   end
 
   context 'a bind' do
-    it 'returns the admin user of a standalone node' do
-      creds = credentials('standalone', [vm('mysql/0', ['10.0.0.5']), vm('mysql', ['10.0.0.5'])])
+    let(:standalone_vms) { [vm('mysql/0', 'n0', ['10.0.0.5']), vm('mysql', 'n0', ['10.0.0.5'])] }
+
+    # The host is the node's BOSH DNS name, which the server certificate
+    # covers, so a client can verify it.
+    it 'returns the admin user of a standalone node, by its BOSH DNS name' do
+      creds = credentials('standalone', standalone_vms)
       expect(creds).to eq(
-        'host' => '10.0.0.5',
+        'host' => 'n0.mysql.pxc-service.deployment.bosh',
         'port' => 3306,
         'username' => 'admin',
         'password' => 'TESTPW',
         'admin_username' => 'admin',
         'admin_password' => 'TESTPW',
-        'uri' => 'mysql://admin:TESTPW@10.0.0.5:3306/',
+        'uri' => 'mysql://admin:TESTPW@n0.mysql.pxc-service.deployment.bosh:3306/',
         'ca_certificate' => 'SERVICES-CA'
       )
     end
 
-    it 'points a cluster binding at the proxies' do
+    it 'names the plan network in the host' do
+      params = { 'meta' => PARAMS['meta'].merge('net' => 'valkey-service') }
+      expect(credentials('standalone', standalone_vms, params)['host'])
+        .to eq('n0.mysql.valkey-service.deployment.bosh')
+    end
+
+    it 'points a cluster binding at the proxies, by their BOSH DNS names' do
       creds = credentials('cluster', [
-        vm('mysql/0', ['10.0.0.5']), vm('mysql/1', ['10.0.0.6']), vm('mysql/2', ['10.0.0.7']),
-        vm('mysql', ['10.0.0.5', '10.0.0.6', '10.0.0.7']),
-        vm('proxy/0', ['10.0.0.8']), vm('proxy/1', ['10.0.0.9']), vm('proxy', ['10.0.0.8', '10.0.0.9'])
+        vm('mysql/0', 'n0', ['10.0.0.5']), vm('mysql/1', 'n1', ['10.0.0.6']), vm('mysql/2', 'n2', ['10.0.0.7']),
+        vm('mysql', 'n0', ['10.0.0.5', '10.0.0.6', '10.0.0.7']),
+        vm('proxy/0', 'p0', ['10.0.0.8']), vm('proxy/1', 'p1', ['10.0.0.9']),
+        vm('proxy', 'p0', ['10.0.0.8', '10.0.0.9'])
       ])
-      expect(creds['host']).to eq('10.0.0.8')
-      expect(creds['hosts']).to eq(['10.0.0.8', '10.0.0.9'])
-      expect(creds['uri']).to eq('mysql://admin:TESTPW@10.0.0.8:3306/')
+      expect(creds['host']).to eq('p0.proxy.pxc-service.deployment.bosh')
+      expect(creds['hosts']).to eq(['p0.proxy.pxc-service.deployment.bosh', 'p1.proxy.pxc-service.deployment.bosh'])
+      expect(creds['uri']).to eq('mysql://admin:TESTPW@p0.proxy.pxc-service.deployment.bosh:3306/')
       expect(creds['username']).to eq('admin')
     end
   end

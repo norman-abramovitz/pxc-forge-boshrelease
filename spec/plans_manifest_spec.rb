@@ -82,6 +82,17 @@ describe 'pxc-blacksmith-plans manifests' do
         expect(cert['options']['ca']).to eq('(( concat "/" meta.bosh_env "-bosh/" meta.environment "-blacksmith/blacksmith_services_ca" ))')
       end
 
+      # Clients verify the server's name: the binding host is a BOSH DNS
+      # name, and the certificate covers every name in the client-facing
+      # group through a wildcard link.
+      it 'names the server certificate after the client-facing group' do
+        cert = manifest['variables'].find { |v| v['name'] == 'pxc_server_tls' }
+        expect(cert['options']['alternative_names']).to eq(['localhost'])
+        expect(cert['consumes']).to eq(
+          'alternative_name' => { 'from' => 'pxc-san', 'properties' => { 'wildcard' => true } }
+        )
+      end
+
       it 'takes tls.required from the plan' do
         expect(mysql['tls']['required']).to eq('(( grab meta.tls_required || false ))')
       end
@@ -109,6 +120,12 @@ describe 'pxc-blacksmith-plans manifests' do
     it 'leaves Galera off' do
       props = job_in(group(manifest, 'mysql'), 'pxc-mysql')['properties']
       expect(props.dig('engine_config', 'galera', 'enabled')).to be_falsey
+    end
+
+    it 'gives the server certificate the node group DNS name' do
+      node = job_in(group(manifest, 'mysql'), 'pxc-mysql')
+      expect(node['provides']).to eq('pxc-san' => { 'as' => 'pxc-san', 'ip_addresses' => false })
+      expect(node['custom_provider_definitions']).to eq([{ 'name' => 'pxc-san', 'type' => 'address' }])
     end
   end
 
@@ -148,6 +165,15 @@ describe 'pxc-blacksmith-plans manifests' do
       proxy = group(manifest, 'proxy')
       expect(proxy['instances']).to eq(2)
       expect(job_in(proxy, 'proxy')['properties']).to eq('api_password' => '((pxc_proxy_api_password))')
+    end
+
+    # Clients reach the nodes through the proxies, so the certificate the
+    # nodes serve carries the proxy group's name.
+    it 'gives the server certificate the proxy group DNS name' do
+      proxy = job_in(group(manifest, 'proxy'), 'proxy')
+      expect(proxy['provides']).to eq('pxc-san' => { 'as' => 'pxc-san', 'ip_addresses' => false })
+      expect(proxy['custom_provider_definitions']).to eq([{ 'name' => 'pxc-san', 'type' => 'address' }])
+      expect(job_in(mysql_group, 'pxc-mysql')).not_to have_key('provides')
     end
 
     it 'generates every internal password' do

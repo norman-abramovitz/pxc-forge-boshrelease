@@ -17,6 +17,12 @@ variables:
     ca: (( concat "/" meta.bosh_env "-bosh/" meta.environment "-blacksmith/blacksmith_services_ca" ))
     common_name: (( concat meta.environment "-pxc.bosh" ))
     alternative_names: [ localhost ]
+  # Clients reach the nodes through the proxies, so the nodes' certificate
+  # carries *.proxy.<network>.<deployment>.bosh, the names the binding hands out.
+  consumes:
+    alternative_name:
+      from: pxc-san
+      properties: { wildcard: true }
 # Galera peers trust only their own deployment's CA, so a node of another
 # instance cannot join this cluster.
 - name: pxc_galera_ca
@@ -119,3 +125,10 @@ instance_groups:
     release: pxc
     properties:
       api_password: ((pxc_proxy_api_password))
+    provides:
+      pxc-san:
+        as: pxc-san
+        ip_addresses: false
+    custom_provider_definitions:
+    - name: pxc-san
+      type: address

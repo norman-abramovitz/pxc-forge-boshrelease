@@ -17,6 +17,11 @@ variables:
     ca: (( concat "/" meta.bosh_env "-bosh/" meta.environment "-blacksmith/blacksmith_services_ca" ))
     common_name: (( concat meta.environment "-pxc.bosh" ))
     alternative_names: [ localhost ]
+  # Adds *.mysql.<network>.<deployment>.bosh, the names the binding hands out.
+  consumes:
+    alternative_name:
+      from: pxc-san
+      properties: { wildcard: true }
 
 releases:
 - name: pxc
@@ -64,3 +69,10 @@ instance_groups:
           password: (( grab meta.admin_password ))
           host: any
           role: admin
+    provides:
+      pxc-san:
+        as: pxc-san
+        ip_addresses: false
+    custom_provider_definitions:
+    - name: pxc-san
+      type: address

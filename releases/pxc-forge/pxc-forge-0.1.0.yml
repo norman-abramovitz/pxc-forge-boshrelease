@@ -1,0 +1,15 @@
+name: pxc-forge
+version: 0.1.0
+commit_hash: 2644f88
+uncommitted_changes: false
+jobs:
+- name: pxc-blacksmith-plans
+  version: 17cb1ea73efe4bb5e17e82bbd91fa8f7d746852ca0dc1c73e2128cc69e0b448a
+  fingerprint: 17cb1ea73efe4bb5e17e82bbd91fa8f7d746852ca0dc1c73e2128cc69e0b448a
+  sha1: sha256:12a8bf717c32dc19f6449c309f002bffe0bd97960a48e6afea318f2dcec537c4
+  packages: []
+license:
+  version: d8eb750a1d0614ad27ecf09b129197cd7c3110bb97e479e36e4ebb8985fbba4b
+  fingerprint: d8eb750a1d0614ad27ecf09b129197cd7c3110bb97e479e36e4ebb8985fbba4b
+  sha1: sha256:6dc954a9109b69943c9080e9d0d643d6bdcaa9f4070ce8d549439963e1c7c469
+no_compression: false

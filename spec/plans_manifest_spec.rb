@@ -60,6 +60,16 @@ describe 'pxc-blacksmith-plans manifests' do
         expect(release_entry(m, 'pxc')).to eq('name' => 'pxc', 'version' => '2.0.14', 'url' => 'u', 'sha1' => 's')
       end
 
+      it 'names the stemcell of a compiled pxc release' do
+        m = render(plan, base.merge('pxc_release' => { 'stemcell' => { 'os' => 'ubuntu-noble', 'version' => '1.69' } }))
+        expect(release_entry(m, 'pxc')['stemcell']).to eq('os' => 'ubuntu-noble', 'version' => '1.69')
+      end
+
+      it 'refuses a compiled pxc release stemcell without a version' do
+        expect { render(plan, base.merge('pxc_release' => { 'stemcell' => { 'os' => 'ubuntu-noble' } })) }
+          .to raise_error(/pxc_release.stemcell needs os and version/)
+      end
+
       it 'runs MySQL 8.4' do
         expect(mysql['mysql_version']).to eq('8.4')
       end

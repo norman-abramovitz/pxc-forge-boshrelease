@@ -50,6 +50,12 @@ releases:
   version: "<%= p('pxc_release.version').to_s.gsub('"', '') %>"
   url: "<%= p('pxc_release.url').to_s.gsub('"', '') %>"
   sha1: "<%= p('pxc_release.sha1').to_s.gsub('"', '') %>"
+<% if_p('pxc_release.stemcell') do |s| -%>
+<% raise 'pxc_release.stemcell needs os and version' unless s['os'] && s['version'] -%>
+  stemcell:
+    os: "<%= s['os'].to_s.gsub('"', '') %>"
+    version: "<%= s['version'].to_s.gsub('"', '') %>"
+<% end -%>
 - name: bpm
   version: "<%= p('bpm_release.version').to_s.gsub('"', '') %>"
   url: "<%= p('bpm_release.url').to_s.gsub('"', '') %>"

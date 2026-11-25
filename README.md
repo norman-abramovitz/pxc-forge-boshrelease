@@ -64,8 +64,46 @@ plans:
 | `stemcell_os` | `ubuntu-noble` (`ubuntu-resolute` works too) |
 | `stemcell_version` | `latest` |
 | `pxc_release.{version,url,sha1}` | pxc-release 2.0.15 |
+| `pxc_release.stemcell.{os,version}` | unset; for a compiled pxc-release (below) |
 | `bpm_release.{version,url,sha1}` | bpm 1.4.41 (resolute needs 1.4.41 or later) |
 | `service.{id,name,description,tags,limit}` | `pxc`, `pxc`, …, `[blacksmith, dedicated, mysql, pxc]`, 0 |
+
+## Source and compiled pxc-release
+
+By default, instance deployments use the pxc-release source tarball from
+bosh.io. The first deployment on a director compiles Percona XtraDB
+Cluster and XtraBackup, which takes about 90 minutes on four 2-CPU
+compile VMs. The director keeps the compiled packages and reuses them
+until the stemcell's major version changes; later deployments take a few
+minutes.
+
+To skip that compile, export a compiled release from a director that has
+already built it, host the tarball where the director can fetch it, and
+point the forge at it:
+
+```
+bosh export-release pxc/2.0.15 ubuntu-noble/<stemcell version>
+```
+
+```yaml
+pxc_release:
+  version: "2.0.15"
+  url: https://example.com/pxc-2.0.15-ubuntu-noble-<stemcell version>.tgz
+  sha1: <sha1 of the tarball>
+  stemcell:
+    os: ubuntu-noble
+    version: "<stemcell version>"
+```
+
+A compiled release only deploys on a stemcell with the same OS and major
+version.
+
+`bosh deploy` reads `stemcell` to check whether the director already has
+the release compiled for that stemcell. Blacksmith does not: it uploads
+a release only when the director has no release of that name and
+version. A director that already holds pxc-release 2.0.15 keeps the copy
+it has, so set the compiled tarball before the first instance on that
+director.
 
 ## Credentials and TLS
 

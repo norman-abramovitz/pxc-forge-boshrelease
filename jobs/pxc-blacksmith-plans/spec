@@ -42,6 +42,9 @@ properties:
     description: "Checksum of the pxc-release tarball"
     default: "3bb8ac90fde574c55cb9f405a67f2bac71207485"
 
+  pxc_release.stemcell:
+    description: "For a compiled pxc-release tarball: the stemcell it was compiled on, as os and version. Leave unset for the source release."
+
   bpm_release.version:
     description: "Version of the bpm release that service instance deployments use. Stemcells without runit need 1.4.41 or later."
     default: "1.4.41"
